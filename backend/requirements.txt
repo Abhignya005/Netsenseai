@@ -1,0 +1,15 @@
+# NetSense backend dependencies (Phase 10 audit)
+# Install with:  pip install -r requirements.txt
+#
+# The ML stack is included so `python ml/train_classifier.py` works
+# right after install. Windows packet capture additionally requires
+# Npcap (https://npcap.com) — install with "WinPcap API-compatible
+# mode" checked, and run the backend as Administrator.
+
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+scapy==2.6.1
+scikit-learn>=1.3
+pandas>=2.0
+numpy>=1.26
+joblib>=1.3

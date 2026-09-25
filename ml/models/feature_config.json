@@ -1,0 +1,16 @@
+{
+  "features": [
+    "Flow_Duration",
+    "Pkt_Count_Fwd",
+    "Pkt_Count_Bwd",
+    "Byte_Rate",
+    "Pkt_Rate",
+    "IAT_Mean",
+    "IAT_Std",
+    "SYN_Ratio",
+    "RST_Ratio",
+    "Avg_Pkt_Size"
+  ],
+  "random_seed": 42,
+  "test_fraction": 0.2
+}
