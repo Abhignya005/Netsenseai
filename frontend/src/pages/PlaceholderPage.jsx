@@ -9,6 +9,7 @@ import { useParams } from 'react-router-dom'
 
 // Turns "/tcp-analysis" into "Tcp Analysis" for the title.
 function titleFromSlug(slug) {
+  if (!slug) return 'Page'
   return slug
     .split('-')
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))

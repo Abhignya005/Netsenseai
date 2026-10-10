@@ -102,6 +102,8 @@ class TcpConnection:
 
         self.start_time = now
         self.last_seen = now
+        # Sequence ladder events for interactive handshake/timeline visualization
+        self.events = []
 
     # Which side of the (normalized) connection sent this packet?
     def direction(self, record):
@@ -144,6 +146,7 @@ class TcpConnection:
             "last_seen": self.last_seen,
             "observed_start": self.observed_start,
             "handshake_complete": self.handshake_complete,
+            "events": list(self.events),
         }
 
 
@@ -238,6 +241,37 @@ class TcpTracker:
                 connection.handshake_complete = True
             # Plain ACK/data on a connection we joined mid-flight keeps
             # state None -> displayed as PARTIAL (section 7).
+
+            # ---- Record event for the interactive ladder visualizer ---
+            if len(connection.events) < 50:
+                summary_text = "Data / ACK"
+                if has_rst:
+                    summary_text = "Abort: RST (Connection Reset)"
+                elif has_syn and has_ack:
+                    summary_text = "Handshake Step 2: SYN-ACK (Server Response)"
+                elif has_syn:
+                    summary_text = "Handshake Step 1: SYN (Connection Request)"
+                elif has_fin:
+                    summary_text = "Teardown: FIN (Close Connection)"
+                elif has_ack and connection.handshake_complete and len(connection.events) <= 2:
+                    summary_text = "Handshake Step 3: ACK (Handshake Complete)"
+                elif size > 0:
+                    summary_text = f"Payload Data ({size} B)"
+                elif has_ack:
+                    summary_text = "Acknowledgment (ACK)"
+
+                connection.events.append({
+                    "timestamp": now,
+                    "delta_ms": round(max(0.0, (now - connection.start_time) * 1000), 1),
+                    "direction": direction,  # "f" (client -> server) or "b" (server -> client)
+                    "flags": sorted(list(flags)),
+                    "flags_str": record.get("tcp_flags") or "None",
+                    "seq": record.get("tcp_seq"),
+                    "ack": record.get("tcp_ack"),
+                    "size": size,
+                    "state_after": connection.display_state(now),
+                    "summary": summary_text,
+                })
         except Exception:
             return   # never let one malformed record break capture
 

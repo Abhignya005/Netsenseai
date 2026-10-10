@@ -94,6 +94,7 @@ def main():
           f"Forward/backward counts split correctly (f={row['forward_packets']}, b={row['backward_packets']})")
     check(row["packets"] == 4 and row["bytes"] == 800,
           f"Totals = f+b (pkts={row['packets']}, bytes={row['bytes']})")
+    check(len(row.get("events", [])) == 4, "Interactive sequence ladder events recorded (4 steps)")
 
     # ---- 5) Teardown: FIN both ways -> CLOSED ---------------------------
     tracker.observe(tcp_record(client, 52341, server, 443, "FIN, ACK", ts=now - 1))

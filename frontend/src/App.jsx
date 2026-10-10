@@ -53,6 +53,8 @@ export default function App() {
   return (
     <Routes>
       <Route element={<AppLayout />}>
+        {/* Default / route redirects immediately to /dashboard */}
+        <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<Dashboard />} />
         {/* Stage 2: the real packet capture page */}
         <Route path="/live-packets" element={<LivePackets />} />

@@ -15,6 +15,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import Badge from '../components/Badge.jsx'
 import DataTable from '../components/DataTable.jsx'
 import SectionCard from '../components/SectionCard.jsx'
+import TcpLadderModal from '../components/TcpLadderModal.jsx'
 import { fetchCaptureStatus, fetchTcpConnections, fetchTcpStats } from '../api.js'
 
 function formatTime(epochSeconds) {
@@ -32,6 +33,7 @@ function formatBytes(bytes) {
 export default function TcpAnalysis() {
   const [stats, setStats] = useState(null)      // {summary, flag_counts}
   const [connections, setConnections] = useState([])
+  const [selectedConn, setSelectedConn] = useState(null) // Active ladder visualizer connection
   const [isRunning, setIsRunning] = useState(false)
   const [error, setError] = useState(null)
   const timer = useRef(null)
@@ -47,6 +49,20 @@ export default function TcpAnalysis() {
       setConnections(connData.connections)
       setIsRunning(statusData.running === true)
       setError(null)
+
+      // Keep selected connection synchronized with live updates
+      setSelectedConn((prev) => {
+        if (!prev) return null
+        return (
+          connData.connections.find(
+            (c) =>
+              c.source_ip === prev.source_ip &&
+              c.source_port === prev.source_port &&
+              c.destination_ip === prev.destination_ip &&
+              c.destination_port === prev.destination_port
+          ) || prev
+        )
+      })
     } catch (e) {
       setError(e.message)
     }
@@ -162,7 +178,7 @@ export default function TcpAnalysis() {
       <div className="mt-6">
         <SectionCard
           title={`TCP Connections${connections.length ? ` (${connections.length} shown)` : ''}`}
-          subtitle="Both directions of a conversation appear as ONE connection — newest activity first"
+          subtitle="Both directions appear as ONE connection — click any row to inspect its interactive sequence ladder diagram"
         >
           {connections.length === 0 ? (
             <p className="py-10 text-center text-sm text-slate-400">
@@ -173,32 +189,61 @@ export default function TcpAnalysis() {
             <DataTable
               headers={[
                 'Connection', 'Source', 'Destination', 'Source Port', 'Destination Port',
-                'State', 'Packets', 'Bytes', 'Start Time', 'Last Seen',
+                'State', 'Packets', 'Bytes', 'Start Time', 'Last Seen', 'Visualizer',
               ]}
             >
-              {connections.map((conn, index) => (
-                <tr
-                  key={`${conn.source_ip}-${conn.source_port}-${conn.destination_ip}-${conn.destination_port}-${index}`}
-                  className="hover:bg-slate-50"
-                >
-                  <td className="whitespace-nowrap px-3 py-2.5 font-mono text-xs font-medium text-slate-800">
-                    {conn.source_ip}:{conn.source_port} → {conn.destination_ip}:{conn.destination_port}
-                  </td>
-                  <td className="px-3 py-2.5 font-medium text-slate-800">{conn.source_ip}</td>
-                  <td className="px-3 py-2.5 font-medium text-slate-800">{conn.destination_ip}</td>
-                  <td className="px-3 py-2.5 text-slate-500">{conn.source_port}</td>
-                  <td className="px-3 py-2.5 text-slate-500">{conn.destination_port}</td>
-                  <td className="px-3 py-2.5"><Badge>{conn.state}</Badge></td>
-                  <td className="px-3 py-2.5 text-slate-500">{conn.packets.toLocaleString()}</td>
-                  <td className="px-3 py-2.5 text-slate-500">{formatBytes(conn.bytes)}</td>
-                  <td className="px-3 py-2.5 text-slate-500">{formatTime(conn.start_time)}</td>
-                  <td className="px-3 py-2.5 text-slate-500">{formatTime(conn.last_seen)}</td>
-                </tr>
-              ))}
+              {connections.map((conn, index) => {
+                const isSelected =
+                  selectedConn &&
+                  selectedConn.source_ip === conn.source_ip &&
+                  selectedConn.source_port === conn.source_port &&
+                  selectedConn.destination_ip === conn.destination_ip &&
+                  selectedConn.destination_port === conn.destination_port
+
+                return (
+                  <tr
+                    key={`${conn.source_ip}-${conn.source_port}-${conn.destination_ip}-${conn.destination_port}-${index}`}
+                    onClick={() => setSelectedConn(conn)}
+                    className={`cursor-pointer transition-colors ${
+                      isSelected ? 'bg-sky-50 ring-1 ring-sky-300' : 'hover:bg-slate-50'
+                    }`}
+                  >
+                    <td className="whitespace-nowrap px-3 py-2.5 font-mono text-xs font-medium text-slate-800">
+                      {conn.source_ip}:{conn.source_port} → {conn.destination_ip}:{conn.destination_port}
+                    </td>
+                    <td className="px-3 py-2.5 font-medium text-slate-800">{conn.source_ip}</td>
+                    <td className="px-3 py-2.5 font-medium text-slate-800">{conn.destination_ip}</td>
+                    <td className="px-3 py-2.5 text-slate-500">{conn.source_port}</td>
+                    <td className="px-3 py-2.5 text-slate-500">{conn.destination_port}</td>
+                    <td className="px-3 py-2.5"><Badge>{conn.state}</Badge></td>
+                    <td className="px-3 py-2.5 text-slate-500">{conn.packets.toLocaleString()}</td>
+                    <td className="px-3 py-2.5 text-slate-500">{formatBytes(conn.bytes)}</td>
+                    <td className="px-3 py-2.5 text-slate-500">{formatTime(conn.start_time)}</td>
+                    <td className="px-3 py-2.5 text-slate-500">{formatTime(conn.last_seen)}</td>
+                    <td className="px-3 py-2.5">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setSelectedConn(conn)
+                        }}
+                        className="inline-flex items-center gap-1 rounded-md border border-sky-300 bg-sky-50 px-2 py-0.5 text-xs font-semibold text-sky-700 shadow-2xs hover:bg-sky-100 transition-colors"
+                      >
+                        Ladder
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })}
             </DataTable>
           )}
         </SectionCard>
       </div>
+
+      {/* Interactive Sequence Ladder Modal */}
+      {selectedConn && (
+        <TcpLadderModal conn={selectedConn} onClose={() => setSelectedConn(null)} />
+      )}
     </div>
   )
 }
